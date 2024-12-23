@@ -5,8 +5,30 @@
 
 using namespace std;
 
-#define ROBOT_KEYPADS 25
-#define FILE_NAME "large.txt"
+#define ROBOT_KEYPADS 75
+#define FILE_NAME "real.txt"
+
+map<char, pair<int, int>> num_keyboard = {
+    {'A', {0, 0}},
+    {'0', {1, 0}},
+    {'1', {2, 1}},
+    {'2', {1, 1}},
+    {'3', {0, 1}},
+    {'4', {2, 2}},
+    {'5', {1, 2}},
+    {'6', {0, 2}},
+    {'7', {2, 3}},
+    {'8', {1, 3}},
+    {'9', {0, 3}},
+};
+
+map<char, pair<int, int>> dir_keyboard = {
+    {'A', {0, 0}},
+    {'^', {1, 0}},
+    {'<', {2, -1}},
+    {'v', {1, -1}},
+    {'>', {0, -1}},
+};
 
 vector<string> permuteRec(string& s, int idx)
 {
@@ -95,7 +117,7 @@ vector<string> directions(int di, int dj, int i, int j){
     return ops;
 }
 
-vector<string> directions(int di, int dj, int j){
+/* vector<string> directions(int di, int dj, int j){
     vector<string> ops;
 
     char c_v = dj < 0 ? 'v' : '^';
@@ -125,6 +147,29 @@ vector<string> directions(int di, int dj, int j){
     return ops;
 }
 
+ */
+
+string decompose(string move){
+    
+    string ans = "";
+    int i = 0, j = 0;
+
+    for(char c : move){
+        vector<string> nxt;
+        auto[dest_i, dest_j] = dir_keyboard[c];
+
+        int di = dest_i - i;
+        int dj = dest_j - j;
+
+        auto ops = directions(di, dj, i, j);
+        ans += ops[0];
+
+        i = dest_i;
+        j = dest_j;
+    }
+
+    return ans;
+}
 
 int main()
 {
@@ -143,33 +188,35 @@ int main()
 
     // Close the file
     inputFile.close();
+
+    map<string, string> dir_combinations = {{"A", "A"}};
+    vector<char> char_dirs = {'<', '>', '^', 'v'};
     
-    map<char, pair<int, int>> num_keyboard = {
-        {'A', {0, 0}},
-        {'0', {1, 0}},
-        {'1', {2, 1}},
-        {'2', {1, 1}},
-        {'3', {0, 1}},
-        {'4', {2, 2}},
-        {'5', {1, 2}},
-        {'6', {0, 2}},
-        {'7', {2, 3}},
-        {'8', {1, 3}},
-        {'9', {0, 3}},
-    };
+    string move = "";
+    for(auto c1 : char_dirs){
+        move = c1; move += "A";
+        dir_combinations[move] = decompose(move);
+        for(auto c2 : char_dirs){
+            move = c1; move += c2; move += "A";
+            dir_combinations[move] = decompose(move);
+            for(auto c3 : char_dirs){
+                move = c1; move += c2; move += c3; move += "A";
+                dir_combinations[move] = decompose(move);
+            }
+        }
+    }
 
-    map<char, pair<int, int>> dir_keyboard = {
-        {'A', {0, 0}},
-        {'^', {1, 0}},
-        {'<', {2, -1}},
-        {'v', {1, -1}},
-        {'>', {0, -1}},
-    };
-
+    /* cout << dir_combinations.size() << endl;
+    for(auto item : dir_combinations){
+        cout << item.first << " : " << item.second << endl;
+    }
+    cout << endl;
+    return 0;*/
 
     int sum = 0;
-    for(auto code : text){
+    for(auto &code : text){
         
+        if(code.length() > 4){ code = code.substr(0, 4); }
         cout << code << endl;
 
         vector<string> inputs;
@@ -180,12 +227,12 @@ int main()
         j = pos.second; 
         for(auto c : code){
             vector<string> nxt;
-            auto[dest_i, dest_j] =  num_keyboard[c];
+            auto[dest_i, dest_j] = num_keyboard[c];
 
             int di = dest_i - i;
             int dj = dest_j - j;
 
-            auto ops = directions(di, dj, j);
+            auto ops = directions(di, dj, i, j);
             for(auto o : ops){
                 for(auto inp : inputs){
                     nxt.push_back(inp + o);
@@ -196,10 +243,10 @@ int main()
 
             inputs = nxt;
         }
-        cout << inputs.size() << endl;
-        cout << inputs[0] << endl;
+        // cout << inputs.size() << endl;
+        cout << inputs[0].size() << endl;
 
-        for(int _ = 0; _<ROBOT_KEYPADS; _++){
+        for(int _ = 0; _<2; _++){
             vector<string> new_inputs;
             auto pos2 = dir_keyboard['A'];
             i = pos2.first;
@@ -214,7 +261,7 @@ int main()
                     int di = dest_i - i;
                     int dj = dest_j - j;
 
-                    auto ops = directions(di, dj, j);
+                    auto ops = directions(di, dj, i, j);
                     for(auto o : ops){
                         for(auto i_ : nxt_inps){
                             nxt.push_back(i_ + o);
@@ -244,24 +291,34 @@ int main()
                     new_inputs.push_back(inp);
                 }
             }
+
+            //store changes made
             inputs = new_inputs;
 
-            cout << inputs.size() << endl;
-            cout << inputs[0] << endl;
+            // cout << inputs.size() << endl;
+            cout << inputs[0].size() << endl;
 
         }
-        
-        // find size of smaller input
-        /* int minimum = INT_MAX; 
-        for(auto inp : inputs){
-            if(minimum > inp.length()){
-                minimum = inp.length();
-            }
-        } */
 
-        int complexity = stoi(code.substr(0, 3)) * inputs[0].length();
+        string ans = inputs[0];
+        for(int _ = 2; _<ROBOT_KEYPADS; _++){
+            string new_ans = "";
+            string tmp = "";
+            for(char c : ans){
+                tmp += c;
+                if(c == 'A'){
+                    if(dir_combinations.find(tmp) == dir_combinations.end()){ cout << "BOOM!" << endl;}
+                    new_ans += dir_combinations[tmp];
+                    tmp = "";
+                }
+            }
+            ans = new_ans;
+            cout << "iter: " << _ << " " << ans.size() << endl;
+        }
+
+        int complexity = stoi(code.substr(0, 3)) * ans.length();
         sum += complexity;
-        cout << "Complexity: " << inputs[0].length() << " * " << stoi(code.substr(0, 3)) << endl;
+        cout << "Complexity: " << ans.length() << " * " << stoi(code.substr(0, 3)) << endl;
         
 
         cout << "##################################" << endl;
