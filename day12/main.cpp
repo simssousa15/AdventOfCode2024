@@ -7,10 +7,27 @@ using namespace std;
 
 #define BLINKS 75
 
+struct Fence{
+    int i, j;
+    bool side;
+    Fence(int i, int j, bool side): i(i), j(j), side(side){}
+
+    // Overloading the equality operator (==)
+    bool operator==(const Fence& other) const {
+        return i == other.i && j == other.j && side == other.side;
+    }
+
+    // Overloading the less-than operator (<)
+    bool operator<(const Fence& other) const {
+        if (i != other.i) return i < other.i;
+        return j < other.j;
+    }
+};
+
 int main()
 {
 
-    ifstream inputFile("large.txt");
+    ifstream inputFile("real.txt");
     if (!inputFile)
     {
         cerr << "Unable to open the file!" << std::endl;
@@ -33,48 +50,102 @@ int main()
     };
     
     // vert and hori fences
-    map<char, vector<pair<int,int>>> h_fences;
-    map<char, vector<pair<int,int>>> v_fences; 
-
-    map<char, int> area;
-
+    int total = 0;
     for(int i = 0; i < text.size(); i++){
         for(int j = 0; j < text[0].size(); j++){
+            
+            if( !isalpha(text[i][j]) ){ continue; }
 
-            area[text[i][j]]++;
+            queue<pair<int, int>> q;
+            q.push(make_pair(i, j));
 
-            for(auto [di, dj] : dirs){
-                bool block = false;
-                if(i+di < 0 || i+di >= text.size()){
-                    block = true;
-                }
-                else if(j+dj < 0 || j+dj >= text[0].size()){ 
-                    block = true;
-                }
-                else if(text[i][j] != text[i+di][j+dj]){
-                    block = true;
-                }
+            char c = text[i][j];
+            set<Fence> v_fences;
+            set<Fence> h_fences;
 
-                if(block){
-                    if(di == 0){
-                        if( dj < 0 ){
-                            v_fences[text[i][j]].push_back({i, j});
+            set<pair<int, int>> visited;
+            while(!q.empty()){
+
+                auto [_i_, _j_] = q.front();
+                q.pop();
+                visited.insert(make_pair(_i_, _j_));
+
+                // cout << _i_ << " " << _j_ << " " << text[_i_][_j_] << endl;
+
+                for(auto [di, dj] : dirs){
+                    bool block = false;
+                    if(_i_+di < 0 || _i_+di >= text.size()){
+                        block = true;
+                    }
+                    else if(_j_+dj < 0 || _j_+dj >= text[0].size()){ 
+                        block = true;
+                    }
+                    else if(c != text[_i_+di][_j_+dj] && visited.find(make_pair(_i_+di, _j_+dj)) == visited.end()){
+                        block = true;
+                    }else if (visited.find(make_pair(_i_+di, _j_+dj)) == visited.end()) {
+                        q.push(make_pair(_i_+di, _j_+dj));
+                    }
+
+                    if(block){
+                        if(di == 0){
+                            if( dj < 0 ){
+                                v_fences.insert(Fence(_i_, _j_, true));
+                            }else{
+                                v_fences.insert(Fence(_i_, _j_+1, false));
+                            }
                         }else{
-                            v_fences[text[i][j]].push_back({i, j+1});
-                        }
-                    }else{
-                        if( di < 0 ){
-                            h_fences[text[i][j]].push_back({i, j});
-                        }else{
-                            h_fences[text[i][j]].push_back({i+1, j});
+                            if( di < 0 ){
+                                h_fences.insert(Fence(_i_, _j_, true));
+                            }else{
+                                h_fences.insert(Fence(_i_+1, _j_, false));
+                            }
                         }
                     }
                 }
+                
+                text[_i_][_j_] = '0';
             }
+
+            int h = h_fences.size();
+            // cout << "H" << endl;
+            for(auto itr1 = h_fences.begin(); itr1 != h_fences.end(); itr1++){
+                // cout << itr1->i <<  " " << itr1->j << endl;
+                for(auto itr2 = itr1; itr2 != h_fences.end(); ++itr2){
+                    if(
+                        itr2->i == itr1->i
+                        && abs(itr2->j - itr1->j) == 1
+                        && itr1->side == itr2->side
+                    )
+                    h--;
+                }
+            }
+
+            int v = v_fences.size();
+            // cout << "V" << endl;
+            for(auto itr1 = v_fences.begin(); itr1 != v_fences.end(); itr1++){
+                // cout << itr1->i <<  " " << itr1->j << endl;
+                for(auto itr2 = itr1; itr2 != v_fences.end(); ++itr2){
+                    if(
+                        itr1->j == itr2->j
+                        && abs(itr1->i - itr2->i) == 1
+                        && itr1->side == itr2->side
+                    )
+                    v--;
+                }
+            }
+            total += visited.size()*(v+h);
+            cout << c << " " << visited.size() << " * " << v + h << " = " << visited.size()*(v+h) << endl; 
         }
     }
 
-    for(auto l : text){
+    cout << "Total: " << total << endl;
+
+
+
+    return 0;
+
+
+    /* for(auto l : text){
         cout << l << endl;
     }
 
@@ -94,34 +165,7 @@ int main()
     map<char, int> h;
     map<char, int> v;
     
-    for(auto it : h_fences){
-        
-        auto fences = h_fences[it.first];
-        h[it.first] = fences.size();
-        for(int i = 0; i < fences.size(); i++){
-            for(int j = i+1; j < fences.size(); j++ ){
-                if(
-                    fences[i].first == fences[j].first
-                    && abs(fences[i].second - fences[j].second) == 1
-                )
-                h[it.first]--;
-            }
-        }
-
-        fences = v_fences[it.first];
-        v[it.first] = fences.size();
-        for(int i = 0; i < fences.size(); i++){
-            for(int j = i+1; j < fences.size(); j++ ){
-                if(
-                    fences[i].second == fences[j].second
-                    && abs(fences[i].first - fences[j].first) == 1
-                )
-                v[it.first]--;
-            }
-        }
-
-
-    }
+    for(auto it : h_fences){}
 
     price = 0;
     cout << "Connected Fences" << endl;
@@ -134,6 +178,7 @@ int main()
         price += area[item.first] * (v[item.first] + h[item.first]);
     }
     cout << "Price with bulk discount: " << price << endl;
+    */
 
     return 0;
 }
