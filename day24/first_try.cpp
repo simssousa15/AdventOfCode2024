@@ -5,6 +5,33 @@
 
 using namespace std;
 
+vector<unordered_set<int>> combinations_4pairs (int size){
+
+    vector<unordered_set<int>> comb;
+    for(int i = 0; i < size; i++){
+        unordered_set<int> tmp;
+        tmp.insert(i);
+        comb.push_back(tmp);
+    }
+
+    while(comb[0].size() < 8){
+        cout << comb[0].size() << " " << comb.size() << endl;
+        vector<unordered_set<int>> new_comb;
+        for(auto c : comb){
+            for(int i = 0; i < size; i++){
+                auto tmp = c;
+                if( tmp.find(i) == tmp.end() ){
+                    tmp.insert(i);
+                    new_comb.push_back(tmp);
+                }
+            }
+        }
+        comb = new_comb;
+    }
+
+    return comb;
+}
+
 struct Operation{
     string el1, el2, op, ans;
 };
@@ -29,15 +56,10 @@ int main()
 
     map<string, bool> wires;
     
-    // Create a random number generator
-    random_device rd; // Random device to seed the generator
-    mt19937 gen(rd()); // Mersenne Twister generator
-    uniform_int_distribution<> dis(0, 1); // Distribution between 0 and 1
-
     int i = 0;
     for(auto l : text){
         if(l.length() < 5){ break; }
-        wires[l.substr(0,3)] = dis(gen);
+        wires[l.substr(0,3)] = l[5] - '0';
         i++;
     }
 
@@ -51,33 +73,9 @@ int main()
         if(wires["x" + num]){ x += pow(2, i); }
         if(wires["y" + num]){ y += pow(2, i); }
     }
-    
-    /*
-    Swap z06 and jmq
-    Swap z13 and gmh
-    Swap z38 and qrh
-    Swap rqf and cbd
 
-    // cbd,gmh,jmq,qrh,rqf,z06,z13,z38
-    // 
-     */
+    vector<Operation> vec;
 
-    map<string, string> swaps;
-    swaps["z06"] = "jmq";
-    swaps["jmq"] = "z06";
-
-    swaps["z13"] = "gmh";
-    swaps["gmh"] = "z13";
-
-    swaps["z38"] = "qrh";
-    swaps["qrh"] = "z38";
-
-    swaps["rqf"] = "cbd";
-    swaps["cbd"] = "rqf";
-
-
-
-    queue<Operation>q;
     for(int j = i+1; j < text.size(); j++){
         Operation op;
         auto  l = text[j];
@@ -89,20 +87,12 @@ int main()
         op.el2 = l.substr(0,3);
         op.ans = l.substr(7,3);
 
-        if(swaps.find(op.ans) != swaps.end()){
-            cout << "Swapping " << op.ans << endl;
-
-            op.ans = swaps[op.ans];
-        }
-
-        q.push(op);
+        vec.push_back(op);
     }
 
-
-    int count = 0;
+    
+    queue<Operation>q;
     while(!q.empty()){
-
-        cout << q.size() << endl;
         auto op = q.front();
         q.pop();
 
@@ -118,9 +108,8 @@ int main()
                 cout << "Unrecognized operation: " << op.op << endl;
             }
 
-            // cout << op.el1 << " " << op.op << " " << op.el2 << " = " << op.ans << endl;
+            // cout << wires[op.el1] << " " << op.op << " " << wires[op.el2] << " = " << wires[op.ans]<< endl;
         }else{
-            // cout << "Pushing " << op.el1 << " " << op.op << " " << op.el2 << " = " << op.ans << endl;
             q.push(op);
         }
     }
@@ -133,36 +122,7 @@ int main()
         }
     }
 
-    cout << "Part1: " << dec << endl;
-    
-    //sum x and y
-    long long x_dec = 0;
-    long long y_dec = 0;
-    for(auto item : wires){
-        if(item.first[0] == 'x' && item.second){
-            x_dec += pow(2, stoll(item.first.substr(1,2)));
-        }
-        if(item.first[0] == 'y' && item.second){
-            y_dec += pow(2, stoll(item.first.substr(1,2)));
-        }
-    }
-    cout << "x+y: " << x_dec + y_dec << endl;
-
-    cout << "----------------" << endl;
-    cout << "Part2" << endl;
-    cout << "G: " << bitset<50>(x_dec+y_dec).to_string() << endl;  
-    cout << "Z: " << bitset<50>(dec).to_string() << endl;
-
-    cout << "diffs" << endl;
-    string g = bitset<50>(x_dec+y_dec).to_string();
-    string z = bitset<50>(dec).to_string();
-
-    for(int i = 0; i < g.length(); i++){
-        if(g[i] != z[i]){
-            cout << g.length() - i - 1 << " ";
-        }
-    }
-    cout << endl;
+    cout << dec << endl;
 
     return 0;
 }
