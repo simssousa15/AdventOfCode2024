@@ -5,7 +5,7 @@
 
 using namespace std;
 
-#define ROBOT_KEYPADS 75
+#define ROBOT_KEYPADS 25
 #define FILE_NAME "real.txt"
 
 map<char, pair<int, int>> num_keyboard = {
@@ -117,59 +117,50 @@ vector<string> directions(int di, int dj, int i, int j){
     return ops;
 }
 
-/* vector<string> directions(int di, int dj, int j){
-    vector<string> ops;
+class CachedEval{
 
-    char c_v = dj < 0 ? 'v' : '^';
-    char c_h = di < 0 ? '>' : '<';
-    
-    string i1="";
-    string i2="";
+    public:
+        map<pair<string, int>, long long> cache;
 
-    for(int i = 0; i < abs(di); i++){ i1 += c_h; }
-    for(int i = 0; i < abs(dj); i++){ i1 += c_v; }
-    
-    for(int i = 0; i < abs(dj); i++){ i2 += c_v; }
-    for(int i = 0; i < abs(di); i++){ i2 += c_h; }
+        long long eval(string instr, int depth=0){
 
-    i1 += 'A';
-    i2 += 'A';
+            if(cache.find({instr, depth}) != cache.end()){
+                return cache[{instr, depth}];
+            }
 
-    if(j != 0 && j+dj != 0){
-        ops.push_back(i1);
-        ops.push_back(i2);
-    }else if(j == 0){
-        ops.push_back(i2);   
-    }else{
-        ops.push_back(i1);
-    }
+            if(depth == 0){
+                cache[{instr, depth}] = instr.length();
+                return instr.length();
+            }
 
-    return ops;
-}
+            auto [i, j] = dir_keyboard['A'];
 
- */
+            long long cost = 0;
+            for(char c : instr){
+                auto [dest_i, dest_j] = dir_keyboard[c];
+                int di = dest_i - i;
+                int dj = dest_j - j;
 
-string decompose(string move){
-    
-    string ans = "";
-    int i = 0, j = 0;
+                auto ops = directions(di, dj, i, j);
 
-    for(char c : move){
-        vector<string> nxt;
-        auto[dest_i, dest_j] = dir_keyboard[c];
+                long long min_cost = LONG_LONG_MAX;
+                for(auto op : ops){
+                    long long new_cost = eval(op, depth-1);
+                    if(new_cost < min_cost){
+                        min_cost = new_cost;
+                    }
+                }
+                cost += min_cost;
 
-        int di = dest_i - i;
-        int dj = dest_j - j;
+                i = dest_i;
+                j = dest_j;
+            }
 
-        auto ops = directions(di, dj, i, j);
-        ans += ops[0];
-
-        i = dest_i;
-        j = dest_j;
-    }
-
-    return ans;
-}
+            // cout << depth << " Cost: " << cost << endl;
+            cache[{instr, depth}] = cost;
+            return cost;
+        }
+};
 
 int main()
 {
@@ -189,33 +180,10 @@ int main()
     // Close the file
     inputFile.close();
 
-    map<string, string> dir_combinations = {{"A", "A"}};
-    vector<char> char_dirs = {'<', '>', '^', 'v'};
-    
-    string move = "";
-    for(auto c1 : char_dirs){
-        move = c1; move += "A";
-        dir_combinations[move] = decompose(move);
-        for(auto c2 : char_dirs){
-            move = c1; move += c2; move += "A";
-            dir_combinations[move] = decompose(move);
-            for(auto c3 : char_dirs){
-                move = c1; move += c2; move += c3; move += "A";
-                dir_combinations[move] = decompose(move);
-            }
-        }
-    }
-
-    /* cout << dir_combinations.size() << endl;
-    for(auto item : dir_combinations){
-        cout << item.first << " : " << item.second << endl;
-    }
-    cout << endl;
-    return 0;*/
-
-    int sum = 0;
-    for(auto &code : text){
-        
+    //first convertion
+    vector<string> first;
+    long long complexity = 0;
+    for( auto code : text ){
         if(code.length() > 4){ code = code.substr(0, 4); }
         cout << code << endl;
 
@@ -243,128 +211,52 @@ int main()
 
             inputs = nxt;
         }
-        // cout << inputs.size() << endl;
-        cout << inputs[0].size() << endl;
 
-        for(int _ = 0; _<2; _++){
-            vector<string> new_inputs;
-            auto pos2 = dir_keyboard['A'];
-            i = pos2.first;
-            j = pos2.second;
-            for(auto inp : inputs){
-                vector<string> nxt_inps;
-                nxt_inps.push_back("");
-                for(auto c : inp){
-                    vector<string> nxt;
-                    auto[dest_i, dest_j] =  dir_keyboard[c];
-
-                    int di = dest_i - i;
-                    int dj = dest_j - j;
-
-                    auto ops = directions(di, dj, i, j);
-                    for(auto o : ops){
-                        for(auto i_ : nxt_inps){
-                            nxt.push_back(i_ + o);
-                        }
-                    }
-                    i = dest_i;
-                    j = dest_j;
-
-                    nxt_inps = nxt;
-                }
-                for(auto nxt : nxt_inps){
-                    new_inputs.push_back(nxt);
-                }
+        // remove larger
+        int minimum = INT_MAX;
+        for(auto inp : inputs){
+            if(minimum > inp.length()){
+                minimum = inp.length();
             }
-            inputs = new_inputs;
-
-            // remove larger
-            int minimum = INT_MAX; 
-            for(auto inp : inputs){
-                if(minimum > inp.length()){
-                    minimum = inp.length();
-                }
-            }
-            new_inputs.clear();
-            for(auto inp : inputs){
-                if(minimum == inp.length()){
-                    new_inputs.push_back(inp);
-                }
-            }
-
-            //store changes made
-            inputs = new_inputs;
-
-            // cout << inputs.size() << endl;
-            cout << inputs[0].size() << endl;
-
         }
-
-        string ans = inputs[0];
-        for(int _ = 2; _<ROBOT_KEYPADS; _++){
-            string new_ans = "";
-            string tmp = "";
-            for(char c : ans){
-                tmp += c;
-                if(c == 'A'){
-                    if(dir_combinations.find(tmp) == dir_combinations.end()){ cout << "BOOM!" << endl;}
-                    new_ans += dir_combinations[tmp];
-                    tmp = "";
-                }
+        vector<string> new_inputs;
+        for(auto inp : inputs){
+            if(minimum == inp.length()){
+                new_inputs.push_back(inp);
             }
-            ans = new_ans;
-            cout << "iter: " << _ << " " << ans.size() << endl;
         }
+        // #################
+        // cout << "First itr: " << new_inputs[0].size() << endl;
+        // cout << "First ops: " << new_inputs.size() << endl;
 
-        int complexity = stoi(code.substr(0, 3)) * ans.length();
-        sum += complexity;
-        cout << "Complexity: " << ans.length() << " * " << stoi(code.substr(0, 3)) << endl;
-        
+        CachedEval ce;
+        long long min_cost = LONG_LONG_MAX;
+        for(auto instr : new_inputs){
+            // cout << instr << endl;
+            long long cost = ce.eval(instr, 25);
+            // cout << endl;
+            if(cost < min_cost){ 
+                min_cost = cost;
+                // cout << cost << endl;
+            }
+        }
+        cout << "Final Cost: " << min_cost << endl;
+        complexity += min_cost * stoll(code.substr(0, 3));
 
-        cout << "##################################" << endl;
     }
-
-    cout << "Total: " << sum << endl;
+    
+    cout << "Complexity: " << complexity << endl;
 
     return 0;
 }
 
 
-
-// high: 126384
-
 /*
-029A: 
-<vA<AA>>^AvAA<^A>A<v<A>>^AvA^A<vA>^A<v<A>^A>AAvA^A<v<A>A>^AAAvA<^A>A
+029A
 
+v<<A>>^A<A>AvA<^AA>A<vAAA>^A
 
-980A: 
-<v<A>>^AAAvA^A<vA<AA>>^AvAA<^A>A<v<A>A>^AAAvA<^A>A<vA>^A<A>A
-v<<A>>^AAAvA^Av<A<AA>>^AAvAA^<A>Av<A>^Av<<A>>^AAAvA^<A>Av<A>^A<A>A
-
-
-179A: 
-<v<A>>^A<vA<A>>^AAvAA<^A>A<v<A>>^AAvA^A<vA>^AA<A>A<v<A>A>^AAAvA<^A>A
-
-
-456A: 
-<v<A>>^AA<vA<A>>^AAvAA<^A>A<vA>^A<A>A<vA>^A<A>A<v<A>A>^AAvA<^A>A
-
-
-
-
-
-
-
-
-379A:
-A<AAv<AA>>^AvAA^Av<AAA>^A
-
-^A<vA<AA>>^AAvA<^A>AAvA^A<vA>^AA<A>A<v<A>A>^AAAvA<^A>A
-^Av<<A>>^AAv<A<A>>^AAvAA^<A>Av<A>^AA<A>Av<A<A>>^AAAvA^<A>A
-
-^A^^<<A>>AvvvA
-<A>A<AAv<AA>>^AvAA^Av<AAA>^A
-
+<A^A>^^AvvvA
+<v<Av<<AA<AAvA<A<AA<vAv<A<vAv<A<vAv<AA
 
 */
